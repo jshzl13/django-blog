@@ -1,11 +1,12 @@
 FROM ubuntu:24.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+# 1. Install Apache, mod_wsgi, and dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         python3 \
@@ -16,30 +17,34 @@ RUN apt-get update \
         default-libmysqlclient-dev \
         pkg-config \
         curl \
+        apache2 \
+        libapache2-mod-wsgi-py3 \
     && rm -rf /var/lib/apt/lists/*
 
+# 2. Setup Virtual Environment
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# --- Create a non-root user matching host UID/GID ---
-ARG USER_ID=1000
-ARG GROUP_ID=1000
+# 3. Copy application code
+COPY . .
 
-# Remove default ubuntu user/group if present (frees up UID/GID 1000)
-RUN userdel -r ubuntu 2>/dev/null || true \
-    && groupdel ubuntu 2>/dev/null || true
+# 4. Copy Apache configuration file into the container
+COPY ./docker/apache/default.conf /etc/apache2/sites-available/000-default.conf
 
-RUN groupadd -g ${GROUP_ID} appuser \
-    && useradd -u ${USER_ID} -g appuser -m appuser \
-    && chown -R appuser:appuser /app /opt/venv
+# 5. Enable necessary Apache modules
+RUN a2enmod rewrite ssl wsgi
 
-USER appuser
+# 6. Ensure permissions for Apache (www-data)
+RUN chown -R www-data:www-data /app /opt/venv \
+    && chmod -R 755 /app
 
-COPY --chown=appuser:appuser . .
+COPY ./docker/sh/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-EXPOSE 8000
+EXPOSE 80
 
-CMD ["python3", "manage.py", "runserver", "0.0.0.0:8000"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2ctl", "-D", "FOREGROUND"]
