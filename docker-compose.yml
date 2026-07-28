@@ -25,7 +25,9 @@ services:
       args:
         USER_ID: ${UID:-1000}
         GROUP_ID: ${GID:-1000}
-    command: python3 manage.py runserver 0.0.0.0:80
+    image: ghcr.io/jshzl13/django_blog:develop
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:80 --workers 3
+    #command: python3 manage.py runserver 0.0.0.0:80
     volumes:
       - .:/app
     ports:
