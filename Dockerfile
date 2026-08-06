@@ -41,7 +41,7 @@ RUN a2enmod rewrite ssl wsgi
 RUN chown -R www-data:www-data /app /opt/venv \
     && chmod -R 755 /app
 
-COPY ./docker/sh/entrypoint.sh /entrypoint.sh
+COPY ./docker/scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 80
