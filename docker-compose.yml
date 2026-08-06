@@ -2,13 +2,15 @@ services:
   db:
     image: mysql:8.0
     restart: always
+    env_file:
+      - .env
     environment:
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -23,11 +25,13 @@ services:
       args:
         USER_ID: ${UID:-1000}
         GROUP_ID: ${GID:-1000}
-    command: python3 manage.py runserver 0.0.0.0:8000
+    image: ghcr.io/jshzl13/django_blog:develop
+    command: gunicorn core.wsgi:application --bind 0.0.0.0:80 --workers 3
+    #command: python3 manage.py runserver 0.0.0.0:80
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "8080:80"
     env_file:
       - .env
     depends_on:
